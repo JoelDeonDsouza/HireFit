@@ -16,9 +16,13 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
+    "pdfjs-dist": "^3.11.174",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "styled-components": "^6.1.19"
+    "styled-components": "^6.1.19",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

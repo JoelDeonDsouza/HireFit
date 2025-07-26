@@ -1,6 +1,6 @@
 import { NavContainer, NavContent, Logo, DetailsContainer, NavTextLink } from './NavStyled';
 // Logo //
-import logo from '/public/logo.png';
+import logo from '/logo.png';
 
 const Nav = () => {
   return (
