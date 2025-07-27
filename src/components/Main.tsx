@@ -17,9 +17,12 @@ import {
   InitialOutputContainer,
   AvatarImage,
   UploadTextDisplay,
+  LoadingBlock,
+  LoadingGif,
 } from './MainStyled';
 // Logo //
 import logo from '/logo-bg.png';
+import loadingGif from '/search.gif';
 // Custom hooks //
 import { useResumeAIReview } from '../hooks/useResumeAIReview';
 
@@ -33,13 +36,15 @@ const Main = () => {
     setFile,
     loading,
     resumeFile,
-    // resumeText,
-    // extractedText,
+    resumeText,
+    extractedText,
     resumeLoading,
     handleFileChange,
     handleResumeFileChange,
-    handleResumeUpload,
-    handleSubmit,
+    handleCompleteWorkflow,
+    aiReviewResult,
+    error,
+    setError,
   } = useResumeAIReview(corsProxy);
 
   // File input refs //
@@ -52,79 +57,94 @@ const Main = () => {
   // Handle form submission //
   const handleFormSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Check if we have a job posting (URL or file)
+    // job posting (URL or file) //
     const hasJobPosting = url || file;
-    // Check if we have a resume //
+    // resume //
     const hasResume = resumeFile;
     if (!hasJobPosting || !hasResume) {
-      console.log('Please provide both a job posting and a resume');
+      setError('Please provide both a job posting and a resume');
       return;
     }
-    await handleSubmit(e);
-    await handleResumeUpload();
+    await handleCompleteWorkflow(e);
   };
+
+  console.log(extractedText, 'extractedText');
+  console.log(resumeText, 'resumeText');
+
+  console.log('AI Review Result:', aiReviewResult);
 
   return (
     <HeroSection>
-      <MainContainer>
-        {/* Form */}
-        <FormSection>
-          <Title>Begin Resume Review!</Title>
-          <Subtitle>
-            Upload a job link, image, or PDF to get your resume fit score and improvement tips
-          </Subtitle>
-          <Form onSubmit={handleFormSubmit}>
-            <InputGroup>
-              {/* Url */}
-              <Input
-                id="url-input"
-                name="url"
-                type="url"
-                placeholder="Enter application URL here"
-                value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  if (e.target.value) setFile(null);
-                }}
-                disabled={!!file || isLoading}
+      {isLoading ? (
+        <LoadingBlock>
+          <LoadingGif src={loadingGif} alt="Loading..." />
+        </LoadingBlock>
+      ) : (
+        <MainContainer>
+          {/* Form */}
+          <FormSection>
+            <Title>Begin Resume Review!</Title>
+            <Subtitle>
+              Upload a job link, image, or PDF to get your resume fit score and improvement tips
+            </Subtitle>
+            <Form onSubmit={handleFormSubmit}>
+              <InputGroup>
+                {/* Url */}
+                <Input
+                  id="url-input"
+                  name="url"
+                  type="url"
+                  placeholder="Enter application URL here"
+                  value={url}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    if (e.target.value) setFile(null);
+                  }}
+                  disabled={!!file || isLoading}
+                />
+              </InputGroup>
+              {/* file / img */}
+              <UploadInput
+                ref={fileInputRef}
+                id="file-input"
+                type="file"
+                accept=".jpg, .jpeg, .png, .pdf"
+                onChange={handleFileChange}
+                disabled={!!url || isLoading}
               />
-            </InputGroup>
-            {/* file / img */}
-            <UploadInput
-              ref={fileInputRef}
-              id="file-input"
-              type="file"
-              accept=".jpg, .jpeg, .png, .pdf"
-              onChange={handleFileChange}
-              disabled={!!url || isLoading}
-            />
-            {/* Resume */}
-            <ResumeUpload>
-              <ResumeTextUpload>Upload Resume below*</ResumeTextUpload>
-            </ResumeUpload>
-            <UploadInput
-              ref={resumeInputRef}
-              id="file-resume"
-              type="file"
-              accept=".jpg, .jpeg, .png, .pdf"
-              onChange={handleResumeFileChange}
-              disabled={isLoading}
-            />
-            {/* Button upload */}
-            <UploadButton type="submit">Upload</UploadButton>
-          </Form>
-        </FormSection>
-        {/* AI Review */}
-        <AIResultsSection>
-          <InitialOutputContainer>
-            <AvatarImage src={logo} alt="logo" />
-            <UploadTextDisplay>
-              Your job fit score, strengths, weaknesses, and improvements will appear here. Please
-              note: We don’t collect or store any data
-            </UploadTextDisplay>
-          </InitialOutputContainer>
-        </AIResultsSection>
-      </MainContainer>
+              {/* Resume */}
+              <ResumeUpload>
+                <ResumeTextUpload>Upload Resume below*</ResumeTextUpload>
+              </ResumeUpload>
+              <UploadInput
+                ref={resumeInputRef}
+                id="file-resume"
+                type="file"
+                accept=".jpg, .jpeg, .png, .pdf"
+                onChange={handleResumeFileChange}
+                disabled={isLoading}
+              />
+              {/* Button upload */}
+              {!aiReviewResult ? (
+                <UploadButton type="submit" disabled={isLoading}>
+                  Upload
+                </UploadButton>
+              ) : null}
+              {error && <Subtitle style={{ color: 'red' }}>{error}</Subtitle>}
+            </Form>
+          </FormSection>
+          {/* AI Review */}
+          <AIResultsSection>
+            <InitialOutputContainer>
+              <AvatarImage src={logo} alt="logo" />
+              <UploadTextDisplay>
+                Your job fit score, strengths, weaknesses, and improvements will appear here. Please
+                note: We don’t collect or store any data
+              </UploadTextDisplay>
+            </InitialOutputContainer>
+          </AIResultsSection>
+        </MainContainer>
+      )}
     </HeroSection>
   );
 };

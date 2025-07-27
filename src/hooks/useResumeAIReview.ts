@@ -1,46 +1,43 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import axios from 'axios';
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 import { load } from 'cheerio';
 import 'pdfjs-dist/build/pdf.worker.entry';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+//  types  //
+import type {
+  AIReviewResult,
+  UseAIResumeTypesReturn,
+  SupportedFileExtension,
+} from '../types/resume';
+// prompts //
+import { AI_PROMPTS } from '../constants/prompts';
 
-// Types //
-interface UseInterviewGeneratorReturn {
-  url: string;
-  setUrl: (url: string) => void;
-  file: File | null;
-  setFile: (file: File | null) => void;
-  extractedText: string;
-  loading: boolean;
-  error: string;
-  userInput: string;
-  setUserInput: (input: string) => void;
-  resumeFile: File | null;
-  setResumeFile: (file: File | null) => void;
-  resumeText: string;
-  resumeLoading: boolean;
-  resumeError: string;
-  handleUrlSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
-  handleFileUpload: () => Promise<void>;
-  handleFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  handleResumeFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  handleResumeUpload: () => Promise<void>;
-  handleSubmit: (e: FormEvent<HTMLFormElement>) => void;
-}
-
-export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorReturn => {
+export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => {
   // State //
   const [url, setUrl] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [userInput, setUserInput] = useState<string>('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState<string>('');
   const [resumeLoading, setResumeLoading] = useState<boolean>(false);
   const [resumeError, setResumeError] = useState<string>('');
+  const [aiReviewResult, setAiReviewResult] = useState<AIReviewResult | null>(null);
+  const [autoTriggerAI, setAutoTriggerAI] = useState<boolean>(false);
+
+  // Auto-trigger AI //
+  useEffect(() => {
+    const triggerAIReview = async () => {
+      if (extractedText && resumeText && autoTriggerAI && !loading) {
+        setAutoTriggerAI(false);
+        await handleAIReviewSubmit();
+      }
+    };
+    triggerAIReview();
+  }, [extractedText, resumeText, autoTriggerAI, loading]);
 
   // Process PDF file //
   const processPdf = async (file: File): Promise<string> => {
@@ -72,6 +69,11 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     }
   };
 
+  // Validate file extension //
+  const isValidFileExtension = (extension: string): extension is SupportedFileExtension => {
+    return ['pdf', 'jpg', 'jpeg', 'png'].includes(extension);
+  };
+
   // Handle URL submission //
   const handleUrlSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,15 +101,17 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     setError('');
     try {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
-      if (fileExtension === 'pdf') {
-        const text = await processPdf(file);
-        setExtractedText(text);
-      } else if (['jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
-        const text = await processImage(file);
-        setExtractedText(text);
-      } else {
+      if (!fileExtension || !isValidFileExtension(fileExtension)) {
         setError('Unsupported file format. Please upload a PDF or image file.');
+        return;
       }
+      let text = '';
+      if (fileExtension === 'pdf') {
+        text = await processPdf(file);
+      } else if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+        text = await processImage(file);
+      }
+      setExtractedText(text);
     } catch (err) {
       setError('Failed to process file. Please try again.');
       console.error(err);
@@ -121,6 +125,7 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     if (e.target.files?.length) {
       setFile(e.target.files[0]);
       setUrl('');
+      setExtractedText('');
     }
   };
 
@@ -129,6 +134,7 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     if (e.target.files?.length) {
       setResumeFile(e.target.files[0]);
       setResumeError('');
+      setResumeText('');
     }
   };
 
@@ -139,12 +145,15 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     setResumeError('');
     try {
       const fileExtension = resumeFile.name.split('.').pop()?.toLowerCase();
-      if (fileExtension === 'pdf') {
-        const text = await processPdf(resumeFile);
-        setResumeText(text);
-      } else {
+      if (!fileExtension || !isValidFileExtension(fileExtension)) {
         setResumeError('Unsupported resume file format. Please upload a PDF or image file.');
+        return;
       }
+      let text = '';
+      if (fileExtension === 'pdf') {
+        text = await processPdf(resumeFile);
+      }
+      setResumeText(text);
     } catch (err) {
       setResumeError('Failed to process resume file. Please try again.');
       console.error(err);
@@ -163,6 +172,77 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     }
   };
 
+  // WorkFlow //
+  const handleCompleteWorkflow = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const hasJobPosting = url || file;
+    const hasResume = resumeFile;
+    if (!hasJobPosting || !hasResume) {
+      setError('Please provide both a job posting and a resume');
+      return;
+    }
+    try {
+      setAiReviewResult(null);
+      setError('');
+      setResumeError('');
+      setAutoTriggerAI(true);
+      // Process job posting //
+      if (url) {
+        await handleUrlSubmit(e);
+      } else if (file) {
+        await handleFileUpload();
+      }
+      // Process resume //
+      await handleResumeUpload();
+    } catch (err) {
+      console.error('Error in complete workflow:', err);
+      setError('An error occurred during processing');
+    }
+  };
+
+  // Handle AI review submission //
+  const handleAIReviewSubmit = async () => {
+    if (!extractedText || !resumeText) {
+      setError('Both job description and resume text are required');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const apiKey = import.meta.env.VITE_GOOGLE_API_KEY as string;
+      if (!apiKey) {
+        throw new Error('API key is missing. Please check your environment variables.');
+      }
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
+      // prompt //
+      const prompt = AI_PROMPTS.RESUME_REVIEW(extractedText, resumeText);
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      try {
+        const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
+        const parsedResult: AIReviewResult = JSON.parse(cleanedResponse);
+        if (
+          typeof parsedResult.analysis?.overall_match_score !== 'number' ||
+          !parsedResult.analysis?.skills_match
+        ) {
+          throw new Error('Invalid response structure from AI');
+        }
+        setAiReviewResult(parsedResult);
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError);
+        setError('Failed to parse AI response. Please try again.');
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'An error occurred while generating the review';
+      setError(`Error: ${errorMessage}`);
+      console.error('Error generating AI review:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     url,
     setUrl,
@@ -171,18 +251,21 @@ export const useResumeAIReview = (corsProxy: string): UseInterviewGeneratorRetur
     extractedText,
     loading,
     error,
-    userInput,
-    setUserInput,
+    setError,
     resumeFile,
     setResumeFile,
     resumeText,
     resumeLoading,
     resumeError,
+    aiReviewResult,
+    setAiReviewResult,
     handleUrlSubmit,
     handleFileUpload,
     handleFileChange,
     handleResumeFileChange,
     handleResumeUpload,
     handleSubmit,
+    handleAIReviewSubmit,
+    handleCompleteWorkflow,
   };
 };
