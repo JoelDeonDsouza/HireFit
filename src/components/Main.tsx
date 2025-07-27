@@ -36,8 +36,6 @@ const Main = () => {
     setFile,
     loading,
     resumeFile,
-    resumeText,
-    extractedText,
     resumeLoading,
     handleFileChange,
     handleResumeFileChange,
@@ -67,11 +65,6 @@ const Main = () => {
     }
     await handleCompleteWorkflow(e);
   };
-
-  console.log(extractedText, 'extractedText');
-  console.log(resumeText, 'resumeText');
-
-  console.log('AI Review Result:', aiReviewResult);
 
   return (
     <HeroSection>
