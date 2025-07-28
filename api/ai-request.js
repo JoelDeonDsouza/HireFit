@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     }
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
     const aiModel = genAI.getGenerativeModel({
-      model: model || 'gemini-2.0-flash-exp',
+      model: model || 'gemini-pro',
     });
     const result = await aiModel.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
     res.json({
       text: responseText,
-      model: model || 'gemini-2.0-flash-exp',
+      model: model || 'gemini-pro',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
