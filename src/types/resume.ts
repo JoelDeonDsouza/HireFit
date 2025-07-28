@@ -2,9 +2,11 @@ import { type FormEvent, type ChangeEvent } from 'react';
 
 // AI Review Result Interface //
 export interface AIReviewResult {
-  candidate_name: string;
-  job_title: string;
-  analysis: {
+  isValid: boolean;
+  error?: string;
+  candidate_name?: string;
+  job_title?: string;
+  analysis?: {
     skills_match: {
       score: number;
     };
@@ -12,6 +14,17 @@ export interface AIReviewResult {
     improvements: string[];
     overall_match_score: number;
   };
+  overallScore?: {
+    clarity: number;
+    relevance: number;
+    completeness: number;
+  };
+  metrics?: {
+    keywordMatch: number;
+    experienceAlignment: number;
+    educationMatch: number;
+  };
+  missingKeywords?: string[];
 }
 
 // Skill Analysis Interface //
@@ -43,6 +56,8 @@ export interface UseAIResumeTypesReturn {
   resumeText: string;
   resumeLoading: boolean;
   resumeError: string;
+  // Reset Function //
+  resetAllData: () => void;
   // AI Review States //
   aiReviewResult: AIReviewResult | null;
   setAiReviewResult: (result: AIReviewResult | null) => void;

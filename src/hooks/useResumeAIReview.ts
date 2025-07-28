@@ -215,16 +215,23 @@ export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => 
       }
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
-      // prompt //
       const prompt = AI_PROMPTS.RESUME_REVIEW(extractedText, resumeText);
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
       try {
         const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
         const parsedResult: AIReviewResult = JSON.parse(cleanedResponse);
+        if (!parsedResult.isValid) {
+          setError(parsedResult.error || 'Please upload a valid resume and job description');
+          return;
+        }
         if (
-          typeof parsedResult.analysis?.overall_match_score !== 'number' ||
-          !parsedResult.analysis?.skills_match
+          !parsedResult.analysis?.overall_match_score ||
+          typeof parsedResult.analysis.overall_match_score !== 'number' ||
+          !parsedResult.analysis?.skills_match ||
+          !parsedResult.overallScore ||
+          !parsedResult.metrics ||
+          !parsedResult.missingKeywords
         ) {
           throw new Error('Invalid response structure from AI');
         }
@@ -243,6 +250,20 @@ export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => 
     }
   };
 
+  // Reset all data //
+  const resetAllData = (): void => {
+    setUrl('');
+    setFile(null);
+    setExtractedText('');
+    setResumeFile(null);
+    setResumeText('');
+    setAiReviewResult(null);
+    setError('');
+    setResumeError('');
+    setLoading(false);
+    setResumeLoading(false);
+    setAutoTriggerAI(false);
+  };
   return {
     url,
     setUrl,
@@ -267,5 +288,6 @@ export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => 
     handleSubmit,
     handleAIReviewSubmit,
     handleCompleteWorkflow,
+    resetAllData,
   };
 };

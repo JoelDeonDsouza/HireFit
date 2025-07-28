@@ -8,7 +8,7 @@ const Nav = () => {
       <NavContent>
         <Logo src={logo} alt="Logo" />
         <DetailsContainer>
-          <NavTextLink>GitHub</NavTextLink>
+          <NavTextLink href="https://github.com/JoelDeonDsouza/HireFit">GitHub</NavTextLink>
         </DetailsContainer>
       </NavContent>
     </NavContainer>
