@@ -49,3 +49,7 @@ VITE_GOOGLE_API_KEY=
 ```
 
 ## 🔗 Demo
+
+```
+https://hire-fit-ai.vercel.app
+```
