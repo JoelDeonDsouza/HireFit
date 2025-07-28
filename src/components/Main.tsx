@@ -36,7 +36,7 @@ import loadingGif from '/search.gif';
 import { useResumeAIReview } from '../hooks/useResumeAIReview';
 // Charts //
 import SkillsMatchScore from './charts/SkillsMatchScore';
-import OverallScore from './charts/OverallScore';
+import OverallScore from './charts/OverAllScore';
 
 const Main = () => {
   // CORS proxy  //

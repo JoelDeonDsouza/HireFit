@@ -6,7 +6,7 @@ import {
   ChartWrapper,
   ChartLabel,
   ScoreText,
-} from './OverallScoreStyled';
+} from './OverAllScoreStyled';
 
 interface ChartData {
   name: string;
