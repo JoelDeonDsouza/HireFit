@@ -4,7 +4,6 @@ import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 import { load } from 'cheerio';
 import 'pdfjs-dist/build/pdf.worker.entry';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 //  types  //
 import type {
   AIReviewResult,
@@ -209,15 +208,21 @@ export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => 
     setLoading(true);
     setError('');
     try {
-      const apiKey = import.meta.env.VITE_GOOGLE_API_KEY as string;
-      if (!apiKey) {
-        throw new Error('API key is missing. Please check your environment variables.');
+      const response = await fetch('/api/ai-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: AI_PROMPTS.RESUME_REVIEW(extractedText, resumeText),
+          model: 'gemini-2.0-flash-001',
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
-      const prompt = AI_PROMPTS.RESUME_REVIEW(extractedText, resumeText);
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      const data = await response.json();
+      const responseText = data.text || data.response || data;
       try {
         const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
         const parsedResult: AIReviewResult = JSON.parse(cleanedResponse);
