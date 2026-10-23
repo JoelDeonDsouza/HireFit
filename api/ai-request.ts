@@ -1,32 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
-interface AIRequestBody {
-  prompt?: string;
-  model?: string;
-}
-
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.8-flash';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { prompt, model } = (req.body ?? {}) as AIRequestBody;
-
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
+    const { prompt, model } = (req.body ?? {}) as { prompt?: string; model?: string };
+    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) {
@@ -35,22 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const modelName = model || DEFAULT_MODEL;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const aiModel = genAI.getGenerativeModel({ model: modelName });
+    const ai = new GoogleGenAI({ apiKey });
 
-    const result = await aiModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-      },
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: { maxOutputTokens: 4096 },
     });
 
-    if (!result.response) {
-      return res.status(400).json({ error: 'Content was blocked by safety filters' });
-    }
-
-    const responseText = result.response.text();
+    const responseText = response.text;
     if (!responseText) {
       return res.status(500).json({ error: 'Empty response from AI model' });
     }
@@ -64,17 +44,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('AI API Error:', error);
     const message = error instanceof Error ? error.message : String(error);
 
-    if (message.includes('API key')) {
-      return res.status(401).json({ error: 'Invalid API key' });
-    }
-
-    if (message.includes('quota')) {
+    if (message.includes('API key')) return res.status(401).json({ error: 'Invalid API key' });
+    if (
+      message.includes('quota') ||
+      message.includes('429') ||
+      message.includes('RESOURCE_EXHAUSTED')
+    ) {
       return res.status(429).json({ error: 'API quota exceeded' });
     }
+    if (message.includes('404')) return res.status(502).json({ error: 'Model unavailable' });
 
-    return res.status(500).json({
-      error: 'Failed to generate AI response',
-      ...(process.env.NODE_ENV === 'development' && { details: message }),
-    });
+    return res.status(500).json({ error: 'Failed to generate AI response' });
   }
 }
