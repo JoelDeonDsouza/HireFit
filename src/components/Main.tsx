@@ -39,8 +39,6 @@ import SkillsMatchScore from './charts/SkillsMatchScore';
 import OverallScore from './charts/OverAllScore';
 
 const Main = () => {
-  // CORS proxy  //
-  const corsProxy = import.meta.env.VITE_PROXY_URL as string;
   const {
     url,
     setUrl,
@@ -56,7 +54,7 @@ const Main = () => {
     error,
     setError,
     resetAllData,
-  } = useResumeAIReview(corsProxy);
+  } = useResumeAIReview();
 
   // File input refs //
   const fileInputRef = useRef<HTMLInputElement>(null);
