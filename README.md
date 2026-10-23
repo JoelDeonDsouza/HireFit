@@ -42,8 +42,6 @@ Start the server
 
 ```env
 
-VITE_PROXY_URL=
-
 VITE_GOOGLE_API_KEY=
 
 ```
