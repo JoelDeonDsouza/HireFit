@@ -13,7 +13,7 @@ import type {
 // prompts //
 import { AI_PROMPTS } from '../constants/prompts';
 
-export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => {
+export const useResumeAIReview = (): UseAIResumeTypesReturn => {
   // State //
   const [url, setUrl] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -80,7 +80,10 @@ export const useResumeAIReview = (corsProxy: string): UseAIResumeTypesReturn => 
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(corsProxy + url);
+      const response = await axios.get('/api/fetch-url', {
+        params: { url },
+        responseType: 'text',
+      });
       const $ = load(response.data);
       $('script, style').remove();
       const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
