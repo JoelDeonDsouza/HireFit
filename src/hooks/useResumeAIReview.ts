@@ -218,7 +218,7 @@ export const useResumeAIReview = (): UseAIResumeTypesReturn => {
         },
         body: JSON.stringify({
           prompt: AI_PROMPTS.RESUME_REVIEW(extractedText, resumeText),
-          model: 'gemini-2.0-flash-001',
+          model: 'gemini-2.5-flash',
         }),
       });
       if (!response.ok) {

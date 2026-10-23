@@ -6,7 +6,7 @@ interface AIRequestBody {
   model?: string;
 }
 
-const DEFAULT_MODEL = 'gemini-1.5-pro';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
